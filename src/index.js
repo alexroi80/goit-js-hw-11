@@ -8,17 +8,54 @@ const galleryEl = document.querySelector('.gallery');
 const observerEl = document.querySelector('.observer');
 const lightbox = new SimpleLightbox('.gallery a');
 
-let currentPage = 1;
+let currentPage = null;
 const perPage = 40;
 let query = '';
 
+let options = {
+  root: null,
+  rootMargin: '300px',
+  threshold: 1.0,
+};
+let observer = new IntersectionObserver(onLoad, options);
+
 formEl.addEventListener('submit', onFormSubmit);
+function onLoad(entries, observer) {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      currentPage += 1;
+      loadImages(currentPage, perPage, query)
+        .then(resp => {
+          galleryEl.insertAdjacentHTML(
+            'beforeend',
+            createMarkup(resp.data.hits)
+          );
+          lightbox.refresh();
+          if (currentPage === Math.ceil(resp.data.totalHits / perPage)) {
+            Notiflix.Notify.info(
+              "We're sorry, but you've reached the end of search results."
+            );
+            observer.unobserve(observerEl);
+          }
+          const { height: cardHeight } = document
+            .querySelector('.gallery')
+            .firstElementChild.getBoundingClientRect();
+          window.scrollBy({
+            top: cardHeight * 2,
+            behavior: 'smooth',
+          });
+        })
+        .catch(err => Notiflix.Notify.failure(err.message));
+    }
+  });
+}
 
 function onFormSubmit(evt) {
   evt.preventDefault();
 
   const { searchQuery } = evt.currentTarget.elements;
   query = searchQuery.value.trim();
+  currentPage = 1;
   loadImages(currentPage, perPage, query)
     .then(resp => {
       if (Number(resp.data.totalHits) === 0) {
@@ -26,19 +63,27 @@ function onFormSubmit(evt) {
           'Sorry, there are no images matching your search query. Please try again.'
         );
       }
+
+      galleryEl.innerHTML = '';
       galleryEl.insertAdjacentHTML('beforeend', createMarkup(resp.data.hits));
       Notiflix.Notify.success(`Hooray! We found ${resp.data.totalHits} images`);
       observer.observe(observerEl);
-      lightbox.refresh();
-      const { height: cardHeight } = document
-        .querySelector('.gallery')
-        .firstElementChild.getBoundingClientRect();
-      window.scrollBy({
-        top: cardHeight * 2,
-        behavior: 'smooth',
-      });
+      if (currentPage === Math.ceil(resp.data.totalHits / perPage)) {
+        Notiflix.Notify.info(
+          "We're sorry, but you've reached the end of search results."
+        );
+        observer.unobserve(observerEl);
+        const { height: cardHeight } = document
+          .querySelector('.gallery')
+          .firstElementChild.getBoundingClientRect();
+        window.scrollBy({
+          top: cardHeight * 2,
+          behavior: 'smooth',
+        });
+      }
     })
     .catch(err => Notiflix.Notify.failure(err.message));
+  lightbox.refresh();
 }
 
 function createMarkup(arr) {
@@ -75,40 +120,4 @@ function createMarkup(arr) {
         </div>`
     )
     .join('');
-}
-let options = {
-  root: null,
-  rootMargin: '300px',
-  threshold: 1.0,
-};
-
-let observer = new IntersectionObserver(onLoad, options);
-function onLoad(entries, observer) {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      currentPage += 1;
-      loadImages(currentPage, perPage, query)
-        .then(resp => {
-          galleryEl.insertAdjacentHTML(
-            'beforeend',
-            createMarkup(resp.data.hits)
-          );
-          lightbox.refresh();
-          if (currentPage === Math.ceil(resp.data.totalHits / perPage)) {
-            Notiflix.Notify.info(
-              "We're sorry, but you've reached the end of search results."
-            );
-            observer.unobserve(observerEl);
-          }
-          const { height: cardHeight } = document
-            .querySelector('.gallery')
-            .firstElementChild.getBoundingClientRect();
-          window.scrollBy({
-            top: cardHeight * 2,
-            behavior: 'smooth',
-          });
-        })
-        .catch(err => Notiflix.Notify.failure(err.message));
-    }
-  });
 }

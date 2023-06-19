@@ -16,7 +16,7 @@ background-color: blue;
 }
 
 .photo-card{
-    
+    height: 275px;
     flex-basis: calc((1410 - (3 * 20)) / 4);  
 }
 .info{
@@ -26,4 +26,5 @@ background-color: blue;
    display: block;   
    font-size: 16px;
    width: auto;
+   
 }
